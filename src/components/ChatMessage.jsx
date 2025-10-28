@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_CONFIG } from '../config/api';
 
 // User Avatar Component
 const UserAvatar = () => (
@@ -83,7 +84,7 @@ const ChatMessage = ({ text, isUser, userName, botName, isTyping = false }) => {
           length: match[0].length,
           fullMatch: match[0],
           text: patternIndex === 0 ? match[1] : (patternIndex === 1 ? `Source: ${match[1]}, ${match[2]}` : match[1]),
-          url: patternIndex === 0 ? match[2] : (patternIndex === 1 ? `http://10.105.212.31:3009/documents/${encodeURIComponent(match[1])}` : match[1]),
+          url: patternIndex === 0 ? match[2] : (patternIndex === 1 ? `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.DOCUMENTS}/${encodeURIComponent(match[1])}` : match[1]),
           type: 'link'
         });
       }

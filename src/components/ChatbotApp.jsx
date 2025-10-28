@@ -11,14 +11,7 @@ import ChatMessage from './ChatMessage';
 import ExamplePrompts from './ExamplePrompts';
 import ChatInput from './ChatInput';
 import Disclaimer from './Disclaimer';
-
-// API Configuration
-const API_CONFIG = {
-  BASE_URL: 'http://10.105.212.31:3009',
-  ENDPOINTS: {
-    CHAT: '/chat'
-  }
-};
+import { API_CONFIG } from '../config/api';
 
 // Chat session management - stored in frontend
 const STORAGE_KEY = 'chatbot_sessions';

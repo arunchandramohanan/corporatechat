@@ -26,7 +26,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class RAGManager:
-    def __init__(self, s3_bucket_name: str = "pptbalbucket", collection_name: str = "insurance_docs", base_url: str = "http://10.105.212.31:3009"):
+    def __init__(self, s3_bucket_name: str = "teamone-kb", collection_name: str = "insurance_docs", base_url: str = "http://10.105.212.69:3009"):
         """
         Initialize the RAG Manager with S3 bucket and ChromaDB configuration
         """
@@ -35,7 +35,7 @@ class RAGManager:
         self.base_url = base_url
         
         # Initialize S3 client
-        self.s3_client = boto3.client("s3", region_name="us-east-1")
+        self.s3_client = boto3.client("s3", region_name="ca-central-1")
         
         # Initialize embeddings model
         self.embeddings = HuggingFaceEmbeddings(

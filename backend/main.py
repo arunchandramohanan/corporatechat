@@ -13,6 +13,11 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import io
 import urllib.parse
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -20,8 +25,15 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Insurance Chatbot API")
 
+# Get configuration from environment variables
+S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "teamone-kb")
+LAMBDA_FUNCTION_NAME = os.getenv("LAMBDA_FUNCTION_NAME", "claude-api-function")
+LAMBDA_REGION = os.getenv("LAMBDA_REGION", "ca-central-1")
+RAG_TOP_K = int(os.getenv("RAG_TOP_K", "3"))
+CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+
 # Initialize RAG Manager
-rag_manager = RAGManager(s3_bucket_name="pptpalbucket")
+rag_manager = RAGManager(s3_bucket_name=S3_BUCKET_NAME)
 
 # Thread pool for async operations
 executor = ThreadPoolExecutor(max_workers=4)
@@ -29,7 +41,7 @@ executor = ThreadPoolExecutor(max_workers=4)
 # Configure CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://10.105.212.31:3014", "http://localhost:3000"],  # Allow frontend origins and development
+    allow_origins=CORS_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -116,8 +128,8 @@ async def get_document(document_name: str):
         document_name = urllib.parse.unquote(document_name)
         
         # Get the document from S3
-        s3_client = boto3.client("s3", region_name="us-east-1")
-        response = s3_client.get_object(Bucket="pptpalbucket", Key=document_name)
+        s3_client = boto3.client("s3", region_name=os.getenv("AWS_DEFAULT_REGION", "ca-central-1"))
+        response = s3_client.get_object(Bucket=S3_BUCKET_NAME, Key=document_name)
         
         # Create a streaming response
         file_content = response['Body'].read()
@@ -151,87 +163,59 @@ async def get_document(document_name: str):
         logger.error(f"Error serving document {document_name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-def invoke_bedrock_claude_sonnet_37(prompt: str, max_tokens: int = 512, temperature: float = 0.1):
+def invoke_lambda_claude(prompt: str, max_tokens: int = 1024):
     """
-    Generic function to invoke Bedrock Claude model with given prompt and parameters.
+    Invoke AWS Lambda function that calls Claude API.
+    The Lambda function uses Claude Sonnet 4.5 model.
+
+    Args:
+        prompt: The prompt to send to Claude
+        max_tokens: Maximum tokens to generate (default: 1024)
+
+    Returns:
+        str: The response text from Claude, or dict with error if failed
     """
-    
-    # Create a Bedrock Runtime client
-    client = boto3.client("bedrock-runtime", region_name="us-east-1")
-    
-    # Set the model ID for Claude 3.7 Sonnet
-    model_id = "us.anthropic.claude-3-7-sonnet-20250219-v1:0"
-    
-    # Create the conversation with the user message
-    conversation = [
-        {
-            "role": "user",
-            "content": [{"text": prompt}]
-        }
-    ]
-    
     try:
-        # Send the message to the model using the converse API
-        response = client.converse(
-            modelId=model_id,
-            messages=conversation,
-            inferenceConfig={
-                "maxTokens": max_tokens,
-                "temperature": temperature,
-                "topP": 0.9
-            }
-        )
-        
-        # Extract and print the response text
-        response_text = response["output"]["message"]["content"][0]["text"]
-        logger.info(f"LLM Response: {response_text}")
-        
-        return response_text
-    
-    except (ClientError, Exception) as e:
-        error_message = f"ERROR: Can't invoke '{model_id}'. Reason: {e}"
-        logger.error(error_message)
-        return {"error": error_message}
-    
-def invoke_bedrock_claude_haiku_35(prompt: str, max_tokens: int = 512, temperature: float = 0.1):
-    """
-    Generic function to invoke Bedrock Claude model with given prompt and parameters.
-    """
-    
-    # Create a Bedrock Runtime client
-    client = boto3.client("bedrock-runtime", region_name="us-east-1")
-    
-    # Set the model ID for Claude 3.7 Sonnet
-    model_id = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
-    
-    # Create the conversation with the user message
-    conversation = [
-        {
-            "role": "user",
-            "content": [{"text": prompt}]
+        # Create Lambda client
+        lambda_client = boto3.client("lambda", region_name=LAMBDA_REGION)
+
+        # Prepare payload for Lambda function
+        payload = {
+            "prompt": prompt,
+            "max_tokens": max_tokens
         }
-    ]
-    
-    try:
-        # Send the message to the model using the converse API
-        response = client.converse(
-            modelId=model_id,
-            messages=conversation,
-            inferenceConfig={
-                "maxTokens": max_tokens,
-                "temperature": temperature,
-                "topP": 0.9
-            }
+
+        # Invoke Lambda function
+        response = lambda_client.invoke(
+            FunctionName=LAMBDA_FUNCTION_NAME,
+            InvocationType='RequestResponse',
+            Payload=json.dumps(payload)
         )
-        
-        # Extract and print the response text
-        response_text = response["output"]["message"]["content"][0]["text"]
-        logger.info(f"LLM Response: {response_text}")
-        
+
+        # Parse response
+        response_payload = json.loads(response['Payload'].read())
+
+        # Check if Lambda execution was successful
+        if response_payload.get('statusCode') != 200:
+            error_body = json.loads(response_payload.get('body', '{}'))
+            error_message = f"Lambda error: {error_body.get('error', 'Unknown error')}"
+            logger.error(error_message)
+            return {"error": error_message}
+
+        # Extract the response text from Lambda response
+        body = json.loads(response_payload['body'])
+        response_text = body.get('response', '')
+
+        # Log usage information
+        usage = body.get('usage', {})
+        logger.info(f"LLM Response received. Model: {body.get('model', 'unknown')}, "
+                   f"Input tokens: {usage.get('input_tokens', 0)}, "
+                   f"Output tokens: {usage.get('output_tokens', 0)}")
+
         return response_text
-    
+
     except (ClientError, Exception) as e:
-        error_message = f"ERROR: Can't invoke '{model_id}'. Reason: {e}"
+        error_message = f"ERROR: Can't invoke Lambda '{LAMBDA_FUNCTION_NAME}'. Reason: {e}"
         logger.error(error_message)
         return {"error": error_message}    
 
@@ -294,7 +278,7 @@ def process_message(messages: List[Dict], context: Dict) -> str:
         # Search for relevant documents using RAG
         rag_context = ""
         if latest_user_message:
-            rag_context = rag_manager.get_context_for_prompt(latest_user_message, k=3)
+            rag_context = rag_manager.get_context_for_prompt(latest_user_message, k=RAG_TOP_K)
         
         # Format conversation history for the prompt
         conversation_history = ""
@@ -411,9 +395,8 @@ Say: "Additional medical information will be required..."
 Your response should be conversational but focused on gathering the required information or answering underwriting questions accurately as a representative. Start your response directly with the relevant information without any meta-commentary.
 """
         
-        # Get response from Claude
-        #response = invoke_bedrock_claude_sonnet_37(prompt, max_tokens=1024)
-        response = invoke_bedrock_claude_haiku_35(prompt, max_tokens=1024)
+        # Get response from Claude via Lambda
+        response = invoke_lambda_claude(prompt, max_tokens=1024)
         print(f"Raw LLM response: {response}")
         
         # Check if there was an error
