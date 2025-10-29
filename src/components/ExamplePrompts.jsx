@@ -1,119 +1,121 @@
-import React, { useState, useEffect } from 'react';
-import { Typography, Box, Paper, Fade } from '@mui/material';
+import React, { useMemo } from 'react';
+import { Typography, Box, Paper, Fade, Chip } from '@mui/material';
 import ForumIcon from '@mui/icons-material/Forum';
+import PolicyIcon from '@mui/icons-material/Policy';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import ReceiptIcon from '@mui/icons-material/Receipt';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 
 const ExamplePrompts = ({ onSelectPrompt }) => {
-  // State to hold the selected prompts
-  const [selectedPrompts, setSelectedPrompts] = useState([]);
-  
-  // Expanded list of 50 example prompts focused on corporate card support
-  const allExamplePrompts = [
-    // Card Program Basics & Policy Queries
-    "What types of corporate cards does BMO offer?",
-    "How do I apply for a corporate card for my employees?",
-    "What are the credit limits available for corporate cards?",
-    "What's the difference between purchasing cards and corporate cards?",
-    "What are the eligibility requirements for a corporate card?",
-    "Can I get a corporate card with rewards programs?",
-
-    // Card Activation & Setup
-    "How do I activate a new corporate card?",
-    "What's the process for setting up virtual cards?",
-    "How do I add authorized users to my corporate card account?",
-    "Can I set spending limits for individual cardholders?",
-    "How do I set up online access for my corporate card?",
-    "What's the process for issuing cards to new employees?",
-
-    // Transaction Management & Disputes
-    "How do I view my recent transactions?",
-    "Why was my transaction declined?",
-    "How do I dispute a charge on my corporate card?",
-    "What's the process for reporting fraudulent transactions?",
-    "Can I download transaction history for the past year?",
-    "How long does it take to process a transaction dispute?",
-    "What documentation is needed to file a dispute?",
-
-    // Expense Management & Reporting
-    "How do I download transaction reports for reconciliation?",
-    "What expense categories can I use for tracking purchases?",
-    "Can I export transaction data to my accounting software?",
-    "How do I generate an expense report for tax purposes?",
-    "What reports are available for expense policy compliance?",
-    "How do I track employee spending across departments?",
-
-    // Card Controls & Security
-    "How do I temporarily block a lost or stolen card?",
-    "Can I restrict certain merchant categories for employee cards?",
-    "What security features are available for corporate cards?",
-    "How do I set up transaction alerts and notifications?",
-    "Can I set daily spending limits for my card?",
-    "What fraud protection is included with my corporate card?",
-    "How do I report a compromised card number?",
-
-    // Payment & Billing
-    "When are corporate card payments due each month?",
-    "How do I set up automatic payments for my corporate card?",
-    "What happens if I miss a payment deadline?",
-    "Can I request a payment extension for my account?",
-    "How do I view my current balance and available credit?",
-    "What are the interest rates on outstanding balances?",
-
-    // Travel & International Usage
-    "Are there foreign transaction fees on BMO corporate cards?",
-    "How do I notify BMO about international travel plans?",
-    "What's the daily ATM withdrawal limit for corporate cards?",
-    "Can I use my corporate card for online purchases?",
-    "Does my card work in all countries?",
-    "What travel insurance is included with my corporate card?",
-
-    // Rewards & Benefits
-    "What rewards programs are available for corporate cards?",
-    "How do I redeem points earned on corporate card purchases?",
-    "Does my corporate card include travel insurance?",
-    "What purchase protection benefits come with my card?",
-    "Can I transfer rewards points to airline programs?",
-    "How do I check my current rewards balance?",
-
-    // Account Management
-    "How do I update my billing address for my corporate card?",
-    "Can I increase my corporate card credit limit?",
-    "How do I add or remove cardholders from my account?",
-    "What's the process for closing a corporate card account?",
-    "How do I change the primary account holder?",
-    "Can I convert my card to a different card type?",
-
-    // Digital & Mobile Banking
-    "How do I add my corporate card to Apple Pay or Google Pay?",
-    "Is there a mobile app for managing corporate cards?",
-    "Can I view real-time transactions on my corporate card?",
-    "How do I enable push notifications for card activity?",
-    "Can I make payments through the mobile app?",
-
-    // Compliance & Documentation
-    "What documentation do I need for tax reporting purposes?",
-    "How long are transaction records kept in the system?",
-    "What are the corporate card usage policies?",
-    "How do I ensure compliance with company expense policies?",
-
-    // Technical Support & Troubleshooting
-    "I'm having trouble logging into my corporate card portal. What should I do?",
-    "My card was declined but I have available credit. Why?",
-    "How do I reset my online banking password?",
-    "The mobile app isn't syncing my transactions. How can I fix this?",
-    "I didn't receive my new card. What should I do?",
-    "How do I update my contact information for card notifications?"
-  ];
-  
-  // Function to randomly select 4 prompts from the full list
-  const selectRandomPrompts = () => {
-    const shuffled = [...allExamplePrompts].sort(() => 0.5 - Math.random());
-    return shuffled.slice(0, 4);
+  // Pool of prompts for each agent - one will be randomly selected per category
+  const promptPool = {
+    policy: [
+      "What are the benefits and rewards of my BMO Corporate Card?",
+      "What fees apply to my corporate card?",
+      "How do I activate my new card?",
+      "What is the foreign transaction fee policy?",
+      "What insurance coverage comes with my card?",
+      "Can I add authorized users to my account?",
+      "What is the annual fee for my card?",
+      "What are the credit limit policies?"
+    ],
+    account: [
+      "What's my current balance and available credit?",
+      "How do I update my account information?",
+      "Show me my account summary",
+      "What is my credit limit?",
+      "How do I request a credit limit increase?",
+      "What are my account settings?",
+      "How do I set up spending alerts?",
+      "Check my payment due date"
+    ],
+    transaction: [
+      "Show me my recent transactions",
+      "Find transactions from last week",
+      "How do I dispute a charge?",
+      "Show me pending transactions",
+      "Download my transaction history",
+      "Search for a specific transaction",
+      "Show me all travel expenses",
+      "How do I file a dispute?"
+    ],
+    analytics: [
+      "Analyze my spending by category this month",
+      "Show me my spending trends",
+      "Generate an expense report",
+      "Compare my spending to budget",
+      "What are my top spending categories?",
+      "Show me monthly spending analysis",
+      "Track my budget vs actual spending",
+      "Show me spending patterns over time"
+    ],
+    escalation: [
+      "I want to speak to a manager",
+      "File a complaint about a fee",
+      "Report unauthorized charges",
+      "I need help with a fraud case",
+      "Escalate this issue to a supervisor",
+      "Report suspicious activity on my account",
+      "I'm not satisfied with the service",
+      "Request a formal investigation"
+    ]
   };
-  
-  // Select random prompts on component mount
-  useEffect(() => {
-    setSelectedPrompts(selectRandomPrompts());
-  }, []);
+
+  // Randomly select 4 agents out of 5, then one prompt from each selected category
+  const agentPrompts = useMemo(() => {
+    const getRandomPrompt = (category) => {
+      const prompts = promptPool[category];
+      const randomIndex = Math.floor(Math.random() * prompts.length);
+      return prompts[randomIndex];
+    };
+
+    // Define all 5 agents
+    const allAgents = [
+      {
+        category: 'policy',
+        agent: "Policy",
+        icon: <PolicyIcon />,
+        color: "#7c4dff"
+      },
+      {
+        category: 'account',
+        agent: "Account",
+        icon: <AccountBalanceIcon />,
+        color: "#00897b"
+      },
+      {
+        category: 'transaction',
+        agent: "Transaction",
+        icon: <ReceiptIcon />,
+        color: "#1e88e5"
+      },
+      {
+        category: 'analytics',
+        agent: "Analytics",
+        icon: <BarChartIcon />,
+        color: "#f4511e"
+      },
+      {
+        category: 'escalation',
+        agent: "Escalation",
+        icon: <SupportAgentIcon />,
+        color: "#e53935"
+      }
+    ];
+
+    // Randomly select 4 out of 5 agents
+    const shuffled = [...allAgents].sort(() => Math.random() - 0.5);
+    const selectedAgents = shuffled.slice(0, 4);
+
+    // Generate prompts for the selected agents
+    return selectedAgents.map(agentConfig => ({
+      text: getRandomPrompt(agentConfig.category),
+      agent: agentConfig.agent,
+      icon: agentConfig.icon,
+      color: agentConfig.color
+    }));
+  }, []); // Empty dependency array ensures this runs once per component mount
 
   return (
     <Box sx={{ mb: 4 }}>
@@ -141,49 +143,76 @@ const ExamplePrompts = ({ onSelectPrompt }) => {
         </Typography>
       </Box>
       
-      <Box sx={{ 
-        display: 'flex', 
-        flexWrap: 'wrap', 
+      <Box sx={{
+        display: 'flex',
+        flexWrap: 'wrap',
         gap: 2,
         justifyContent: 'space-between'
       }}>
-        {selectedPrompts.map((prompt, index) => (
-          <Fade 
+        {agentPrompts.map((promptObj, index) => (
+          <Fade
             key={index}
-            in={true} 
+            in={true}
             timeout={(index + 1) * 300}
             style={{ transitionDelay: `${index * 50}ms` }}
           >
-            <Paper 
+            <Paper
               elevation={1}
-              onClick={() => onSelectPrompt(prompt)}
-              sx={{ 
-                p: 2.5, // Increased padding
-                cursor: 'pointer', 
+              onClick={() => onSelectPrompt(promptObj.text)}
+              sx={{
+                p: 2.5,
+                cursor: 'pointer',
                 borderRadius: 2,
-                border: '2px solid #e0e0e0', // Changed to match the message bubbles
-                backgroundColor: '#f2f8fc', // Changed to match user message bubble color
+                border: '2px solid #e0e0e0',
+                backgroundColor: '#f2f8fc',
                 flexBasis: 'calc(50% - 1rem)',
-                minHeight: '4.5rem', // Increased height
+                minHeight: '5rem',
                 display: 'flex',
-                alignItems: 'center',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: 3,
+                  borderColor: promptObj.color,
+                }
               }}
             >
-              <Typography 
-                sx={{ 
-                  color: '#000000',
-                  lineHeight: 1.6,
-                  fontWeight: 500, // Made bolder
-                  fontSize: '16px', // Increased font size
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                <Box sx={{
+                  color: promptObj.color,
+                  display: 'flex',
+                  alignItems: 'center',
+                  mt: 0.5
+                }}>
+                  {promptObj.icon}
+                </Box>
+                <Typography
+                  sx={{
+                    color: '#000000',
+                    lineHeight: 1.6,
+                    fontWeight: 500,
+                    fontSize: '16px',
+                    flex: 1
+                  }}
+                >
+                  {promptObj.text}
+                </Typography>
+              </Box>
+              <Chip
+                label={`${promptObj.agent} Agent`}
+                size="small"
+                sx={{
+                  alignSelf: 'flex-start',
+                  mt: 1,
+                  backgroundColor: `${promptObj.color}15`,
+                  color: promptObj.color,
+                  fontWeight: 600,
+                  fontSize: '11px',
+                  height: '22px',
+                  border: `1px solid ${promptObj.color}40`
                 }}
-              >
-                {prompt}
-              </Typography>
+              />
             </Paper>
           </Fade>
         ))}

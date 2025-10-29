@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { API_CONFIG } from '../config/api';
+import AgentBadge from './AgentBadge';
+import AgentSteps from './AgentSteps';
+import AgentHandoff from './AgentHandoff';
 
 // User Avatar Component
 const UserAvatar = () => (
@@ -55,7 +58,17 @@ const ThumbsDownIcon = () => (
 );
 
 // Individual Chat Message Component
-const ChatMessage = ({ text, isUser, userName, botName, isTyping = false }) => {
+const ChatMessage = ({
+  text,
+  isUser,
+  userName,
+  botName,
+  isTyping = false,
+  activeAgent = null,
+  consultedAgents = [],
+  agentSteps = [],
+  agentHandoffs = []
+}) => {
   // Function to parse text and make links clickable
   const renderTextWithLinks = (text) => {
     if (!text) return '';
@@ -220,8 +233,23 @@ const ChatMessage = ({ text, isUser, userName, botName, isTyping = false }) => {
             >
               {isUser ? userName || 'You' : botName || 'Corporate Card AI'}
             </span>
+            {/* Agent Badge for bot messages */}
+            {!isUser && activeAgent && (
+              <div style={{ marginLeft: '12px' }}>
+                <AgentBadge agentName={activeAgent} variant="minimal" />
+              </div>
+            )}
           </div>
-          
+
+          {/* Agent Handoffs */}
+          {!isUser && agentHandoffs && agentHandoffs.length > 0 && (
+            <div style={{ marginTop: '8px', marginBottom: '8px' }}>
+              {agentHandoffs.map((handoff, index) => (
+                <AgentHandoff key={index} handoff={handoff} index={index} />
+              ))}
+            </div>
+          )}
+
           {/* Message Content - Either text or typing indicator */}
           {!isTyping ? (
             <div
@@ -233,8 +261,13 @@ const ChatMessage = ({ text, isUser, userName, botName, isTyping = false }) => {
                 fontSize: '16px',
                 fontFamily: 'Heebo, sans-serif',
               }}
+              dangerouslySetInnerHTML={
+                text && (text.includes('<') && text.includes('>'))
+                  ? { __html: text }
+                  : undefined
+              }
             >
-              {renderTextWithLinks(text)}
+              {text && !(text.includes('<') && text.includes('>')) ? renderTextWithLinks(text) : null}
             </div>
           ) : (
             <div
@@ -315,6 +348,11 @@ const ChatMessage = ({ text, isUser, userName, botName, isTyping = false }) => {
                 </div>
               </div>
             </>
+          )}
+
+          {/* Agent Steps - Show reasoning process */}
+          {!isUser && !isTyping && agentSteps && agentSteps.length > 0 && (
+            <AgentSteps steps={agentSteps} consultedAgents={consultedAgents} />
           )}
         </div>
       </div>

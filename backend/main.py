@@ -16,6 +16,10 @@ import urllib.parse
 import os
 from dotenv import load_dotenv
 
+# Import multi-agent system
+from agents.orchestrator import get_orchestrator
+from mock_services import get_account_service, get_transaction_service, get_analytics_service
+
 # Load environment variables
 load_dotenv()
 
@@ -31,9 +35,18 @@ LAMBDA_FUNCTION_NAME = os.getenv("LAMBDA_FUNCTION_NAME", "claude-api-function")
 LAMBDA_REGION = os.getenv("LAMBDA_REGION", "ca-central-1")
 RAG_TOP_K = int(os.getenv("RAG_TOP_K", "3"))
 CORS_ALLOWED_ORIGINS = os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+USE_MULTI_AGENT = os.getenv("USE_MULTI_AGENT", "true").lower() == "true"
 
 # Initialize RAG Manager
 rag_manager = RAGManager(s3_bucket_name=S3_BUCKET_NAME)
+
+# Initialize mock services
+account_service = get_account_service()
+transaction_service = get_transaction_service()
+analytics_service = get_analytics_service(transaction_service)
+
+# Initialize orchestrator (will be initialized after Lambda client is set up)
+orchestrator = None
 
 # Thread pool for async operations
 executor = ThreadPoolExecutor(max_workers=4)
@@ -62,6 +75,12 @@ class ChatResponse(BaseModel):
     followUpOptions: List[str] = []
     quote: Dict[str, Any] | None = None
     context: Dict = {}
+    # Multi-agent fields
+    activeAgent: Optional[str] = None
+    consultedAgents: List[str] = []
+    agentSteps: List[Dict[str, Any]] = []
+    agentHandoffs: List[Dict[str, Any]] = []
+    confidenceScore: float = 0.0
 
 class IndexRequest(BaseModel):
     reindex: bool = False
@@ -79,13 +98,26 @@ async def health_check():
 @app.on_event("startup")
 async def startup_event():
     """Initialize and index documents on startup"""
+    global orchestrator
+
     try:
+        # Initialize the orchestrator with all services
+        if USE_MULTI_AGENT:
+            orchestrator = get_orchestrator(
+                rag_manager=rag_manager,
+                lambda_client=invoke_lambda_claude,
+                account_service=account_service,
+                transaction_service=transaction_service,
+                analytics_service=analytics_service
+            )
+            logger.info("Multi-agent orchestrator initialized")
+
         # Run indexing in background thread to not block startup
         async def index_in_background():
             loop = asyncio.get_event_loop()
             stats = await loop.run_in_executor(executor, rag_manager.index_all_documents)
             logger.info(f"Background indexing completed with stats: {stats}")
-        
+
         asyncio.create_task(index_in_background())
         logger.info("Started background document indexing")
     except Exception as e:
@@ -168,6 +200,30 @@ async def get_document(document_name: str):
         logger.error(f"Error serving document {document_name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/agents/info")
+async def get_agents_info():
+    """Get information about available agents"""
+    if not USE_MULTI_AGENT or not orchestrator:
+        return {
+            "multi_agent_enabled": False,
+            "message": "Multi-agent system not enabled"
+        }
+
+    agents_info = []
+    for agent_name, agent in orchestrator.agents.items():
+        agents_info.append({
+            "name": agent_name,
+            "display_name": agent.name,
+            "description": agent.description,
+            "tools": agent.get_tools()
+        })
+
+    return {
+        "multi_agent_enabled": True,
+        "agents": agents_info,
+        "total_agents": len(agents_info)
+    }
+
 def invoke_lambda_claude(prompt: str, max_tokens: int = 1024):
     """
     Invoke AWS Lambda function that calls Claude API.
@@ -230,42 +286,78 @@ async def get_chat_response(request: Request):
         # Get the request body
         body = await request.json()
         logger.info(f"Received request: {body}")
-        
+
         # Validate the request
         if not isinstance(body.get('messages'), list):
             raise HTTPException(status_code=400, detail="Invalid request format: messages must be a list")
-        
-        # Get the latest user message
+
+        # Get the messages and context
         messages = body['messages']
-        latest_message = next(msg for msg in messages[::-1] if msg['isUser'])
-        
-        # Get the context from the request or initialize it
         context = body.get('context', {})
         logger.info(f"Received context: {context}")
-        
-        # Process the message and generate response
-        response_text = process_message(messages, context)
-        logger.info(f"Final context after processing: {context}")
-        
-        # Generate follow-up options based on conversation context
-        follow_up_options = generate_follow_up_options(messages, context)
 
-        # If we have enough context, generate a card summary
-        quote = None
-        if should_show_card_summary(context):
-            quote = generate_card_summary(context)
-        
-        # Create response object
-        response = ChatResponse(
-            text=response_text,
-            isUser=False,
-            followUpOptions=follow_up_options,
-            quote=quote,
-            context=context  # Include updated context in the response
-        )
-        
-        logger.info(f"Sending response: {response}")
-        return response
+        # Use multi-agent orchestrator if enabled
+        if USE_MULTI_AGENT and orchestrator:
+            logger.info("Using multi-agent orchestrator")
+
+            # Process through multi-agent system
+            response_data = await orchestrator.process_message(messages, context)
+
+            # Create response object with agent data
+            response = ChatResponse(
+                text=response_data.get("text", ""),
+                isUser=False,
+                followUpOptions=response_data.get("follow_up_options", []),
+                quote=response_data.get("quote"),
+                context=response_data.get("context", context),
+                activeAgent=response_data.get("active_agent"),
+                consultedAgents=response_data.get("consulted_agents", []),
+                agentSteps=response_data.get("agent_steps", []),
+                agentHandoffs=response_data.get("agent_handoffs", []),
+                confidenceScore=response_data.get("confidence_score", 0.0)
+            )
+
+            logger.info(f"Multi-agent response generated by {response.activeAgent}")
+            logger.info(f"Consulted agents: {response.consultedAgents}")
+
+            return response
+
+        else:
+            # Fallback to legacy single-agent mode
+            logger.info("Using legacy single-agent mode")
+
+            # Get the latest user message
+            latest_message = next(msg for msg in messages[::-1] if msg['isUser'])
+
+            # Process the message and generate response
+            response_text = process_message(messages, context)
+            logger.info(f"Final context after processing: {context}")
+
+            # Generate follow-up options based on conversation context
+            follow_up_options = generate_follow_up_options(messages, context)
+
+            # If we have enough context, generate a card summary
+            quote = None
+            if should_show_card_summary(context):
+                quote = generate_card_summary(context)
+
+            # Create response object
+            response = ChatResponse(
+                text=response_text,
+                isUser=False,
+                followUpOptions=follow_up_options,
+                quote=quote,
+                context=context,  # Include updated context in the response
+                activeAgent="legacy_agent",
+                consultedAgents=["legacy_agent"],
+                agentSteps=[],
+                agentHandoffs=[],
+                confidenceScore=0.8
+            )
+
+            logger.info(f"Sending response: {response}")
+            return response
+
     except Exception as e:
         logger.error(f"Error processing request: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))

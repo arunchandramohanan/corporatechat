@@ -16,7 +16,7 @@ const ChatInput = ({ onSendMessage }) => {
   };
 
   return (
-    <Box sx={{ position: 'fixed', bottom: 120, left: 0, right: 0, px: 3 }}>
+    <Box sx={{ position: 'fixed', bottom: 110, left: 0, right: 0, px: 3, zIndex: 1001 }}>
       <Paper
         component="form"
         onSubmit={handleSubmit}

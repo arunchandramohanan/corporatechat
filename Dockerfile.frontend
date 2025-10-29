@@ -4,7 +4,7 @@ FROM node:18-alpine as build
 WORKDIR /app
 
 # Accept backend URL as build argument
-ARG VITE_API_BASE_URL=http://15.223.212.70
+ARG VITE_API_BASE_URL=http://15.223.175.224
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 
 # Copy package files

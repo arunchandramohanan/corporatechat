@@ -542,7 +542,14 @@ const ChatbotApp = () => {
                   {messages.map((msg, index) => (
                     <Fade key={index} in={true} timeout={500}>
                       <Box>
-                        <ChatMessage text={msg.text} isUser={msg.isUser} />
+                        <ChatMessage
+                          text={msg.text}
+                          isUser={msg.isUser}
+                          activeAgent={msg.activeAgent}
+                          consultedAgents={msg.consultedAgents}
+                          agentSteps={msg.agentSteps}
+                          agentHandoffs={msg.agentHandoffs}
+                        />
                       </Box>
                     </Fade>
                   ))}
