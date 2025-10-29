@@ -218,7 +218,7 @@ const ChatMessage = ({ text, isUser, userName, botName, isTyping = false }) => {
                 fontFamily: 'Heebo, sans-serif',
               }}
             >
-              {isUser ? userName || 'You' : botName || 'Rovr AI'}
+              {isUser ? userName || 'You' : botName || 'Corporate Card AI'}
             </span>
           </div>
           

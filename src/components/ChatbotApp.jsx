@@ -210,7 +210,6 @@ const ChatbotApp = () => {
     try {
       const response = await fetch(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CHAT}`, {
         method: 'POST',
-        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
@@ -507,7 +506,7 @@ const ChatbotApp = () => {
                     color: '#1e88e5',
                     fontSize: '24px'
                   }}>
-                    Rovr AI
+                    Corporate Card AI
                   </Typography>
                   <Typography
                      variant="body1"
@@ -521,7 +520,7 @@ const ChatbotApp = () => {
                       lineHeight: 1.5
                     }}
                   >
-                    Hello! I'm your BMO Insurance assistant. I can help you with insurance questions and underwriting guidelines.
+                    Hello! I'm your BMO Corporate Card assistant. I can help you with corporate card questions, expense management, and card program support.
                   </Typography>
                 </Box>
               </Zoom>
@@ -550,7 +549,7 @@ const ChatbotApp = () => {
                   {isTyping && (
                     <Fade in={isTyping} timeout={300}>
                       <Box>
-                        <ChatMessage isUser={false} isTyping={true} botName="Rovr AI" />
+                        <ChatMessage isUser={false} isTyping={true} botName="Corporate Card AI" />
                       </Box>
                     </Fade>
                   )}
@@ -571,7 +570,7 @@ const ChatbotApp = () => {
           </Box>
           
           {/* Fixed Input Area - Now properly separated from the messages */}
-          <Box 
+          <Box
             sx={{
               py: 2,
               px: { xs: 1, sm: 2 },
@@ -582,7 +581,8 @@ const ChatbotApp = () => {
               position: 'relative', // Ensure this stays at the bottom
               bottom: 0,
               mt: 'auto', // Push to bottom if flex space available
-              flexShrink: 0 // Don't allow this to shrink
+              flexShrink: 0, // Don't allow this to shrink
+              mb: 4 // Add bottom margin to move input area up from bottom
             }}
           >
             <Box sx={{ width: '100%', maxWidth: '100%' }}> 

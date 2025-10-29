@@ -12,7 +12,7 @@ const Header = () => {
             
           </Typography>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'white' }}>
-            Rovr AI
+            Corporate Card AI
           </Typography>
         </Box>
         <Box sx={{ flexGrow: 1 }}></Box>

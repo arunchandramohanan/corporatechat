@@ -19,9 +19,8 @@ const Disclaimer = () => {
         overflow: 'auto' // Add scrolling if content is too large
       }}
     >
-      <Typography variant="caption" color="textSecondary">
-        <Box component="span" fontWeight="bold">Disclaimer:</Box>
-        {" "}The Rovr AI bot is an automated system powered by Microsoft Azure AI. The Rovr AI is intended to provide access to  Insurance Underwriting documentation and results are for reference only. Results are not a substitute for professional advice and should be used as a starting point only. Information should be verified from trusted sources.
+      <Typography variant="caption" color="textSecondary" align="center">
+        The Corporate Card AI bot is an automated system powered by AI. It is intended to provide access to BMO Corporate Card documentation and support resources.
       </Typography>
  
     </Paper>

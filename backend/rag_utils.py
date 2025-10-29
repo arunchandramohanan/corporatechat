@@ -26,7 +26,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class RAGManager:
-    def __init__(self, s3_bucket_name: str = "teamone-kb", collection_name: str = "insurance_docs", base_url: str = "http://10.105.212.69:3009"):
+    def __init__(self, s3_bucket_name: str = "teamone-kb", collection_name: str = "corporate_card_docs", base_url: str = "http://10.105.212.69:3009"):
         """
         Initialize the RAG Manager with S3 bucket and ChromaDB configuration
         """
@@ -59,7 +59,7 @@ class RAGManager:
         except:
             self.collection = self.chroma_client.create_collection(
                 name=self.collection_name,
-                metadata={"description": "Insurance documents from S3"}
+                metadata={"description": "Corporate card documents from S3"}
             )
             logger.info(f"Created new collection: {self.collection_name}")
         
@@ -321,7 +321,7 @@ class RAGManager:
         # Add source attribution with page numbers and links
         source_list = "\n".join([f"- {source}" for source in sources])
         
-        return f"""Based on the following relevant information from insurance documents:
+        return f"""Based on the following relevant information from corporate card policy documents:
 
 {context}
 
@@ -362,7 +362,7 @@ Sources consulted:
             self.chroma_client.delete_collection(name=self.collection_name)
             self.collection = self.chroma_client.create_collection(
                 name=self.collection_name,
-                metadata={"description": "Insurance documents from S3"}
+                metadata={"description": "Corporate card documents from S3"}
             )
             
             # Clear indexed docs tracking

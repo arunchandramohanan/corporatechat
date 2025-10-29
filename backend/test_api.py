@@ -43,13 +43,13 @@ def test_chat_with_rag():
     test_messages = [
         {
             "messages": [
-                {"text": "What are the underwriting guidelines for life insurance?", "isUser": True}
+                {"text": "What are the procedures for disputing a transaction?", "isUser": True}
             ],
             "context": {}
         },
         {
             "messages": [
-                {"text": "Tell me about home insurance coverage", "isUser": True}
+                {"text": "How do I check my rewards points balance?", "isUser": True}
             ],
             "context": {}
         }

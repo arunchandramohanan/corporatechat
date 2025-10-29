@@ -6,105 +6,102 @@ const ExamplePrompts = ({ onSelectPrompt }) => {
   // State to hold the selected prompts
   const [selectedPrompts, setSelectedPrompts] = useState([]);
   
-  // Expanded list of 50 example prompts focused on underwriting questions
+  // Expanded list of 50 example prompts focused on corporate card support
   const allExamplePrompts = [
-    // Age and Amount Requirements
-    "My client is applying for Universal Life. What underwriting requirements are needed?",
-    "What medical requirements are needed for a senior applying for Preferred Term?",
-    "My client wants Critical Illness coverage. What tests will be required?",
-    
-    // Smoking Status & Preferred Ratings
-    "My client smokes cigars occasionally. Can they qualify for non-smoker rates?",
-    "My client quit smoking recently but still uses nicotine gum. What's their smoking status?",
-    "What's the difference between Preferred Plus and Preferred non-smoker requirements?",
-    "My client stopped using marijuana several years ago. Can they get Preferred Plus rates?",
-    
-    // Medical History & Conditions
-    "My client has Type 2 diabetes controlled with medication. What rating can they expect?",
-    "My client had a heart attack years ago but has been stable since. Are they insurable?",
-    "My client has sleep apnea and uses a CPAP machine. How will this affect their application?",
-    "My client takes medication for high blood pressure. Will they qualify for Preferred rates?",
-    "My client had bariatric surgery and lost significant weight. How will this be viewed?",
-    "My client has asthma controlled with an inhaler. What's the underwriting outlook?",
-    
-    // Family History
-    "My client's father died of a heart attack at a young age. How does this affect Preferred eligibility?",
-    "My client has siblings with cancer diagnosed before age 60. Can they get Preferred rates?",
-    "What family history would disqualify someone from Preferred Plus rates?",
-    
-    // Build/Height/Weight
-    "Does my client meet Preferred build requirements with their current height and weight?",
-    "What's the maximum weight for Preferred Plus at average height?",
-    "My client is slightly over the Preferred build table. What options do they have?",
-    
-    // Blood Pressure & Cholesterol
-    "My client has elevated blood pressure on medication. Can they get Preferred rates?",
-    "What cholesterol levels are acceptable for Preferred Plus?",
-    "My client has high cholesterol. What classification can they expect?",
-    
-    // Occupational Ratings
-    "My client is a commercial pilot. Will there be an occupational rating?",
-    "My client works as a police officer. Is this considered high-risk?",
-    "My client is a firefighter applying for coverage. What rating should I expect?",
-    "My client works offshore on oil rigs. Will this affect their application?",
-    
-    // Aviation & Recreational Activities
-    "My client is a student pilot. What aviation questionnaire is needed?",
-    "My client skydives recreationally. Will this require a rating?",
-    "My client rock climbs and does mountaineering. How will this affect their rating?",
-    "My client scuba dives to significant depths. What information is needed?",
-    
-    // DUI/Motor Vehicle
-    "My client had a DUI several years ago with no other incidents. How will this be rated?",
-    "My client has multiple speeding tickets in recent years. Will this affect Preferred eligibility?",
-    "What's the policy on motor vehicle violations for Preferred classes?",
-    
-    // Financial Underwriting
-    "My client wants substantial coverage with modest income. Will financial documentation be required?",
-    "What financial proof is needed for a high-value Universal Life application?",
-    "My client is self-employed. What income verification will be accepted?",
-    "For business insurance, what's the maximum amount for key person coverage?",
-    
-    // Critical Illness Specific
-    "My client was treated for depression in the past. Can they get Critical Illness coverage?",
-    "What conditions automatically disqualify someone from Critical Illness insurance?",
-    "My client has a family history of hereditary disease. Are they eligible for CI?",
-    "What's the maximum Critical Illness coverage that will be considered?",
-    
-    // Foreign Travel & Residency
-    "My client travels to developing countries frequently for work. How will this be rated?",
-    "My client is a permanent resident who arrived recently. What coverage is available?",
-    "My client works under a Provincial Nominee Program. What are their insurance options?",
+    // Card Program Basics & Policy Queries
+    "What types of corporate cards does BMO offer?",
+    "How do I apply for a corporate card for my employees?",
+    "What are the credit limits available for corporate cards?",
+    "What's the difference between purchasing cards and corporate cards?",
+    "What are the eligibility requirements for a corporate card?",
+    "Can I get a corporate card with rewards programs?",
 
-    
-    // APS & Medical Requirements
-    "When will an Attending Physician's Statement be automatically ordered?",
-    "My client saw their doctor recently for a check-up. Will an APS be required?",
-    "My client has a specialist appointment soon. Should we wait to apply?",
-    "What medical conditions typically trigger an APS request?",
-    
-    // Policy Changes & Reinstatement
-    "My client wants to change from smoker to non-smoker status. What's required?",
-    "My client's policy lapsed. What's needed for reinstatement?",
-    "My client wants to add a Critical Illness rider to their existing Universal Life policy. What's required?",
-    "Can my client add a term rider without full underwriting?",
-    
-    // Temporary Insurance Agreement
-    "What's the maximum coverage available under the Temporary Insurance Agreement?",
-    "My client paid first premium with their application. When does TIA coverage begin?",
-    "Under what circumstances would Temporary Insurance Agreement coverage be terminated?",
-    
-    // Special Situations
-    "My client is applying for coverage on their child. What are the requirements?",
-    "My client wants life insurance for charitable giving purposes. How is this evaluated?",
-    "My client is a non-working spouse. What coverage amounts will be considered?",
-    "My client is a recent university graduate with no income. What options are available?",
-    
-    // Product-Specific Questions
-    "What's the difference in underwriting between Preferred Term options?",
-    "My client is a senior. What products are still available to them?",
-    "What's the maximum issue age for Universal Life products?",
-    "Can my client get simplified issue insurance if they already have existing coverage?"
+    // Card Activation & Setup
+    "How do I activate a new corporate card?",
+    "What's the process for setting up virtual cards?",
+    "How do I add authorized users to my corporate card account?",
+    "Can I set spending limits for individual cardholders?",
+    "How do I set up online access for my corporate card?",
+    "What's the process for issuing cards to new employees?",
+
+    // Transaction Management & Disputes
+    "How do I view my recent transactions?",
+    "Why was my transaction declined?",
+    "How do I dispute a charge on my corporate card?",
+    "What's the process for reporting fraudulent transactions?",
+    "Can I download transaction history for the past year?",
+    "How long does it take to process a transaction dispute?",
+    "What documentation is needed to file a dispute?",
+
+    // Expense Management & Reporting
+    "How do I download transaction reports for reconciliation?",
+    "What expense categories can I use for tracking purchases?",
+    "Can I export transaction data to my accounting software?",
+    "How do I generate an expense report for tax purposes?",
+    "What reports are available for expense policy compliance?",
+    "How do I track employee spending across departments?",
+
+    // Card Controls & Security
+    "How do I temporarily block a lost or stolen card?",
+    "Can I restrict certain merchant categories for employee cards?",
+    "What security features are available for corporate cards?",
+    "How do I set up transaction alerts and notifications?",
+    "Can I set daily spending limits for my card?",
+    "What fraud protection is included with my corporate card?",
+    "How do I report a compromised card number?",
+
+    // Payment & Billing
+    "When are corporate card payments due each month?",
+    "How do I set up automatic payments for my corporate card?",
+    "What happens if I miss a payment deadline?",
+    "Can I request a payment extension for my account?",
+    "How do I view my current balance and available credit?",
+    "What are the interest rates on outstanding balances?",
+
+    // Travel & International Usage
+    "Are there foreign transaction fees on BMO corporate cards?",
+    "How do I notify BMO about international travel plans?",
+    "What's the daily ATM withdrawal limit for corporate cards?",
+    "Can I use my corporate card for online purchases?",
+    "Does my card work in all countries?",
+    "What travel insurance is included with my corporate card?",
+
+    // Rewards & Benefits
+    "What rewards programs are available for corporate cards?",
+    "How do I redeem points earned on corporate card purchases?",
+    "Does my corporate card include travel insurance?",
+    "What purchase protection benefits come with my card?",
+    "Can I transfer rewards points to airline programs?",
+    "How do I check my current rewards balance?",
+
+    // Account Management
+    "How do I update my billing address for my corporate card?",
+    "Can I increase my corporate card credit limit?",
+    "How do I add or remove cardholders from my account?",
+    "What's the process for closing a corporate card account?",
+    "How do I change the primary account holder?",
+    "Can I convert my card to a different card type?",
+
+    // Digital & Mobile Banking
+    "How do I add my corporate card to Apple Pay or Google Pay?",
+    "Is there a mobile app for managing corporate cards?",
+    "Can I view real-time transactions on my corporate card?",
+    "How do I enable push notifications for card activity?",
+    "Can I make payments through the mobile app?",
+
+    // Compliance & Documentation
+    "What documentation do I need for tax reporting purposes?",
+    "How long are transaction records kept in the system?",
+    "What are the corporate card usage policies?",
+    "How do I ensure compliance with company expense policies?",
+
+    // Technical Support & Troubleshooting
+    "I'm having trouble logging into my corporate card portal. What should I do?",
+    "My card was declined but I have available credit. Why?",
+    "How do I reset my online banking password?",
+    "The mobile app isn't syncing my transactions. How can I fix this?",
+    "I didn't receive my new card. What should I do?",
+    "How do I update my contact information for card notifications?"
   ];
   
   // Function to randomly select 4 prompts from the full list

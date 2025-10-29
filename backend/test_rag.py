@@ -33,10 +33,10 @@ def test_rag():
     # Test search functionality
     print("3. Testing search functionality...")
     test_queries = [
-        "What are the underwriting guidelines for life insurance?",
-        "How does smoking affect insurance rates?",
-        "What documentation is needed for auto insurance?",
-        "Tell me about home insurance coverage"
+        "What are the transaction dispute procedures?",
+        "How do I increase my credit limit?",
+        "What rewards program benefits are available?",
+        "How do I report a lost or stolen card?"
     ]
     
     for query in test_queries:
@@ -54,7 +54,7 @@ def test_rag():
     
     # Test context generation
     print("\n\n4. Testing context generation for prompts...")
-    test_prompt = "What are the requirements for life insurance?"
+    test_prompt = "What documents are needed to file a transaction dispute?"
     context = rag_manager.get_context_for_prompt(test_prompt, k=3)
     
     if context:

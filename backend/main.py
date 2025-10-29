@@ -23,7 +23,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Insurance Chatbot API")
+app = FastAPI(title="Corporate Card Support API")
 
 # Get configuration from environment variables
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME", "teamone-kb")
@@ -41,8 +41,8 @@ executor = ThreadPoolExecutor(max_workers=4)
 # Configure CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"],  # Allow all origins for public deployment
+    allow_credentials=False,  # Must be False when allow_origins is "*"
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["Content-Type", "Authorization"],
@@ -70,6 +70,11 @@ class IndexResponse(BaseModel):
     status: str
     message: str
     stats: Optional[Dict[str, int]] = None
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "service": "corporate-chat-backend"}
 
 @app.on_event("startup")
 async def startup_event():
@@ -244,11 +249,11 @@ async def get_chat_response(request: Request):
         
         # Generate follow-up options based on conversation context
         follow_up_options = generate_follow_up_options(messages, context)
-        
-        # If we have enough context, generate a quote
+
+        # If we have enough context, generate a card summary
         quote = None
-        if should_generate_quote(context):
-            quote = generate_quote(context)
+        if should_show_card_summary(context):
+            quote = generate_card_summary(context)
         
         # Create response object
         response = ChatResponse(
@@ -288,7 +293,7 @@ def process_message(messages: List[Dict], context: Dict) -> str:
         
         # Create a prompt for the LLM based on the message and context
         prompt = f"""
-You are an AI insurance assistant. Your task is to have a conversation with a customer, collect the necessary information to generate an insurance quote, and provide accurate information about underwriting decisions and guidelines.
+You are a BMO Corporate Card AI assistant. Your task is to provide fast, personalized, and context-aware support to corporate card holders through a conversational interface. You handle policy queries, account data, transactions, analytics, and escalations to reduce support costs and enhance user satisfaction.
 
 Current conversation context: {json.dumps(context)}
 
@@ -299,100 +304,89 @@ Conversation history:
 
 Please respond in a helpful, professional manner. Follow these guidelines:
 
-IMPORTANT: If relevant information from insurance documents was provided above, use it to answer the customer's questions accurately. Always prioritize information from the retrieved documents over general knowledge.
+IMPORTANT: If relevant information from corporate card policy documents was provided above, use it to answer the cardholder's questions accurately. Always prioritize information from the retrieved documents over general knowledge.
 
-1. Identify the type of insurance the customer is interested in (auto, home, life, or business)
-2. Progressively collect necessary information for that insurance type:
-   - For auto insurance: vehicle details (make, model, year), driving history, location
-   - For home insurance: property details, location, value, security features
-   - For life insurance: age, health status, coverage amount needed
-   - For business insurance: business type, size, revenue, location
+SUPPORT CATEGORIES - Identify what the cardholder needs help with:
+1. Policy Queries: Card types, benefits, eligibility, credit limits, rewards programs, fees
+2. Transaction Management: View transactions, dispute charges, report fraud, download statements
+3. Account Management: Activate cards, add users, update information, set spending limits, security settings
+4. Analytics & Reporting: Spending trends, expense reports, compliance reporting, budget tracking
+5. Technical Support: Login issues, password resets, mobile app problems, payment processing
+6. Escalations: Complex issues requiring human intervention
 
-3. Keep track of what information you've already collected and what's still needed
-4. When you have enough information, let the customer know you can generate a quote
+CONTEXT TRACKING - Keep track of:
+- support_category: The type of help needed (policy/transactions/account/analytics/technical/escalation)
+- card_number_last4: Last 4 digits of card (if provided)
+- transaction_details: Specific transaction information for disputes or inquiries
+- issue_description: Clear description of the problem or question
+- resolution_status: Whether the issue is resolved or needs escalation
 
-UNDERWRITING EXPERTISE:
-- Answer questions about underwriting criteria and decisions
-- Explain how specific health conditions, activities, or circumstances affect eligibility or rates
-- Provide information about rating factors for different insurance types
-- Explain practices for assessing risk in life, health, auto, and property insurance
-- Clarify how factors like age, health status, occupation, hobbies, and lifestyle affect underwriting decisions
-- Explain standards for preferred and substandard ratings
-- Provide information about exclusions, riders, and policy modifications
-- When answering underwriting questions, provide a direct and complete answer WITHOUT asking follow-up questions
+CORPORATE CARD EXPERTISE:
+- Explain card program features, benefits, and policies
+- Guide users through transaction management and dispute processes
+- Provide information about spending limits, rewards, and fees
+- Explain security features and fraud protection
+- Help with expense tracking and reporting requirements
+- Clarify compliance and documentation requirements
+- Provide step-by-step instructions for common tasks
+- When answering policy questions, provide a direct and complete answer WITHOUT asking unnecessary follow-up questions
 
 CRITICAL RULES TO FOLLOW:
-- NEVER make up or assume ANY information not explicitly provided by the customer
-- ONLY use information that was directly stated by the customer in the conversation
-- If you're unsure whether a piece of information was provided, ASK the customer to confirm
-- DO NOT reference information that was not provided (like phone numbers, email addresses, etc.)
-- DO NOT assume the customer has provided their name, contact information, or any personal details unless they explicitly stated it
-- When summarizing information, ONLY include details the customer has actually shared
-- If asking for personal information, explain why it's needed for the quote
-- Keep track of exactly what information has been collected and what is still missing
+- NEVER make up or assume information not explicitly provided by the cardholder
+- ONLY use information directly stated by the cardholder or retrieved from official documents
+- DO NOT reference personal information unless the cardholder provided it
+- Keep track of exactly what information has been collected and what is still needed
 - Only ask one question at a time
-- Keep the response short and to the point
-- When answering underwriting questions, provide specific information
-- NEVER use phrases like "some insurers" or "most carriers" or "most life insurance carriers" - always speak with authority as if you are the only insurer
-- DO NOT include phrases like "For life insurance specifically, most carriers have specific guidelines" in your responses
-- Speak directly with confidence about specific policies and guidelines as if they are YOUR policies and guidelines
-- ABSOLUTELY NEVER ask follow-up questions when answering underwriting questions - this is critical
-- For underwriting questions, provide a direct answer WITHOUT asking follow-up questions at the end of your response
-- Recognize when a question is about underwriting criteria (e.g., "Will my client be considered a smoker?") and answer it directly without asking for more information
-- NEVER end an underwriting answer with phrases like "Would you like more information?" or "Is there anything else you'd like to know?"
-- NEVER mention "BMO Insurance" or "BMO" in your responses
-- DO NOT begin responses with meta-commentary like "Based on the customer's inquiry about life insurance, I'll provide a professional response..."
-- DO NOT include any commentary about what you're about to say or how you're structuring your response
-- Jump directly into answering the question without any preamble or explanation of what you're doing
-- NEVER start responses with phrases like "Based on the retrieved information" or "According to the documents" or "Based on the retrieved documents"
-- Provide direct answers without referencing that information was retrieved from documents
-- NEVER use generalizations about the insurance industry - speak as if you are the definitive source
-- DO NOT say things like "typically" or "usually" when discussing underwriting decisions - be definitive
-- Avoid phrases like "will likely be rated" - instead use definitive language like "will be rated" or "is rated"
+- Keep responses clear, concise, and actionable
+- Speak with authority about BMO Corporate Card policies and procedures
+- DO NOT use phrases like "some banks" or "most credit card companies" - speak as BMO's representative
+- DO NOT begin responses with meta-commentary like "Based on the cardholder's inquiry..."
+- Jump directly into answering the question without preamble
+- NEVER start responses with phrases like "Based on the retrieved information" or "According to the documents"
+- Provide direct answers without referencing that information was retrieved
+- Use definitive language - avoid "typically," "usually," "might," etc.
+- For straightforward policy questions, provide the answer directly without asking follow-up questions
 
-- When answering questions based on retrieved documents, ALWAYS cite the sources with page numbers mentioned in the context
-- If no specific documents were retrieved, you can provide general insurance knowledge but indicate that it's general information
-- When documents are cited above, reference them by name AND page number in your response
-- ALWAYS include citations in the format: (Source: [Document Name], Page [Number])
-- Place citations at the end of each statement that references retrieved information
+SELF-SERVICE SUPPORT:
+- Empower cardholders to resolve issues independently when possible
+- Provide clear step-by-step instructions for common tasks
+- Offer links to relevant documentation or tools
+- Explain what cardholders can do themselves vs. what requires support team assistance
+- Reduce escalations by providing comprehensive self-service guidance
 
-EXAMPLES OF USING RETRIEVED INFORMATION:
-Example 1: If documents about smoking were retrieved
-"Applicants who have used any tobacco or nicotine products in the last 12 months are classified as smokers. This includes cigarettes, e-cigarettes, vaping, cigars, pipes, chewing tobacco, and nicotine patches or gum. ([Source: field-underwriting-manual-984e.pdf, Page 15](http://10.105.212.31:3009/documents/field-underwriting-manual-984e.pdf))"
-
-Example 2: If documents about a medical condition were retrieved
-"Type 2 diabetes that is well-controlled with medication and regular check-ups will be rated based on age at diagnosis, current A1C levels, and presence of complications. Additional medical information will be required during underwriting. ([Source: Term Insurance Product Overview 215E.pdf, Page 8](http://10.105.212.31:3009/documents/Term%20Insurance%20Product%20Overview%20215E.pdf))"
+ESCALATION HANDLING:
+When an issue requires human intervention:
+- Clearly explain why escalation is needed
+- Summarize all information collected
+- Provide expected next steps and timeframes
+- Offer ticket/reference number format if applicable
+- Ensure cardholders know how to follow up
 
 CITATION REQUIREMENTS:
-- ALWAYS provide citations when referencing information from retrieved documents
+- When answering questions based on retrieved documents, ALWAYS cite sources with page numbers
 - Use markdown link format: ([Source: Document Name, Page Number](document_link))
-- The document links are provided in the context above - use them exactly as provided
-- Place citations immediately after the information being referenced
+- Place citations at the end of each statement that references retrieved information
 - If multiple documents support a statement, cite all relevant sources
-- If page number is not available, use "Page Unknown"
 - Make sure document names in links are URL-encoded (spaces become %20, etc.)
 
-IDENTIFYING UNDERWRITING QUESTIONS:
-Underwriting questions typically ask about how specific factors affect insurance eligibility, ratings, or pricing. Examples include:
-- Questions about health conditions (diabetes, heart disease, etc.)
-- Questions about activities or hobbies (smoking, scuba diving, aviation, etc.)
-- Questions about occupations and their risk classifications
-- Questions about how specific factors affect insurance rates or eligibility
-- Questions that ask "will they be rated?" or "can they get insurance?"
+EXAMPLES OF USING RETRIEVED INFORMATION:
+Example 1: Policy question about foreign transaction fees
+"There are no foreign transaction fees on BMO corporate cards for purchases made outside Canada. This applies to both in-store and online international purchases. ([Source: BMO Corporate Card Policy Guide.pdf, Page 12](http://10.105.212.31:3009/documents/BMO%20Corporate%20Card%20Policy%20Guide.pdf))"
 
-When you identify a question as being about underwriting, provide a direct, authoritative answer with NO follow-up questions.
+Example 2: Dispute process question
+"Transaction disputes must be filed within 60 days of the statement date. You'll need to provide the transaction date, merchant name, amount, and reason for dispute. Submit through the online portal or mobile app under 'Dispute Transaction.' ([Source: Corporate Card FAQ.pdf, Page 8](http://10.105.212.31:3009/documents/Corporate_Card_FAQ.pdf))"
 
-EXAMPLES OF WHAT NOT TO SAY:
-Instead of: "Most life insurance carriers will apply a substandard rating..."
-Say: "This will result in a substandard rating..."
+EXAMPLES OF GOOD RESPONSES:
+Instead of: "Most corporate cards have a dispute process..."
+Say: "Your BMO corporate card allows you to dispute transactions within 60 days..."
 
-Instead of: "Typically, insurers consider..."
-Say: "This is considered..."
+Instead of: "Typically, cardholders can..."
+Say: "You can activate your card by calling the number on the sticker or through the mobile app..."
 
-Instead of: "The client may need to provide additional medical information..."
-Say: "Additional medical information will be required..."
+Instead of: "This might require approval from..."
+Say: "Credit limit increases require approval from your account administrator..."
 
-Your response should be conversational but focused on gathering the required information or answering underwriting questions accurately as a representative. Start your response directly with the relevant information without any meta-commentary.
+Your response should be conversational, solution-focused, and empowering. Provide specific, actionable information that helps cardholders resolve their issues quickly. Start your response directly with the relevant information without any meta-commentary.
 """
         
         # Get response from Claude via Lambda
@@ -409,7 +403,7 @@ Your response should be conversational but focused on gathering the required inf
         context_update = {}
         
         # Look for JSON block in the response
-        json_match = re.search(r'{.*?"insurance_type".*?}', response, re.DOTALL)
+        json_match = re.search(r'{.*?"support_category".*?}', response, re.DOTALL)
         if json_match:
             try:
                 # Extract and parse the JSON
@@ -437,99 +431,128 @@ def generate_follow_up_options(messages: List[Dict], context: Dict) -> List[str]
         # Get the latest user message
         latest_message = next(msg for msg in messages[::-1] if msg['isUser'])
         message_text = latest_message['text'].lower()
-        
-        # Get insurance type from context if available
-        insurance_type = context.get('insurance_type', '').lower()
-        
+
+        # Get support category from context if available
+        support_category = context.get('support_category', '').lower()
+
         # Generate follow-up options based on context and conversation
-        if insurance_type == 'auto':
-            if not context.get('vehicle_details'):
-                return ["Tell me about your vehicle", "What car do you drive?", "What's your car's year, make and model?"]
-            elif not context.get('driving_history'):
-                return ["Tell me about your driving history", "Any accidents in the last 5 years?", "How long have you been driving?"]
-            elif not context.get('location'):
-                return ["Where do you live?", "What's your zip code?", "Where will the vehicle be parked?"]
+        if support_category == 'transactions':
+            if not context.get('transaction_details'):
+                return ["View recent transactions", "Search for specific transaction", "Download transaction history"]
+            elif context.get('dispute_needed'):
+                return ["File a dispute", "Check dispute status", "Upload supporting documents"]
             else:
-                return ["Get your auto insurance quote", "Any additional coverage needed?", "Ask another question"]
-        
-        elif insurance_type == 'home':
-            if not context.get('property_details'):
-                return ["Tell me about your property", "How old is your home?", "What type of home do you have?"]
-            elif not context.get('location'):
-                return ["Where is your home located?", "What's your zip code?", "Is this your primary residence?"]
-            elif not context.get('value'):
-                return ["What's the value of your home?", "How much is your home worth?", "What's the estimated replacement cost?"]
+                return ["Export to Excel", "Set up transaction alerts", "Ask another question"]
+
+        elif support_category == 'account':
+            if 'activate' in message_text:
+                return ["Activate by phone", "Activate through mobile app", "Activate online"]
+            elif 'limit' in message_text:
+                return ["Check current limit", "Request limit increase", "Set spending alerts"]
+            elif 'lost' in message_text or 'stolen' in message_text:
+                return ["Block card immediately", "Order replacement card", "Review recent transactions"]
             else:
-                return ["Get your home insurance quote", "Any additional coverage needed?", "Ask another question"]
-        
-        elif insurance_type == 'life':
-            if not context.get('age'):
-                return ["How old are you?", "What's your date of birth?", "What's your age?"]
-            elif not context.get('health_status'):
-                return ["Tell me about your health", "Do you smoke?", "Any pre-existing conditions?"]
-            elif not context.get('coverage_amount'):
-                return ["How much coverage do you need?", "What coverage amount are you looking for?", "What's your desired benefit amount?"]
+                return ["Update account info", "Add authorized users", "Manage card settings"]
+
+        elif support_category == 'rewards':
+            if not context.get('rewards_balance_checked'):
+                return ["Check rewards balance", "View redemption options", "See earning rates"]
             else:
-                return ["Get your life insurance quote", "Any additional coverage needed?", "Ask another question"]
-        
-        # Default options if insurance type not determined or not enough context
-        if "quote" in message_text:
-            return ["Get auto insurance quote", "Get home insurance quote", "Get life insurance quote"]
-        elif "auto" in message_text:
-            return ["Tell me about your vehicle", "Share your driving history", "Get a quote"]
-        elif "home" in message_text:
-            return ["Tell me about your property", "Share your location", "Get a quote"]
-        elif "life" in message_text:
-            return ["Share your age", "Share your health status", "Get a quote"]
-            
-        return ["Tell me more about your needs", "Get a quote", "Ask another question"]
+                return ["Redeem for travel", "Redeem for cash back", "Transfer to partners"]
+
+        elif support_category == 'analytics':
+            return ["View spending by category", "Generate expense report", "Download year-to-date summary", "Track budget vs. actual"]
+
+        elif support_category == 'technical':
+            if 'login' in message_text:
+                return ["Reset password", "Unlock account", "Set up two-factor authentication"]
+            elif 'app' in message_text:
+                return ["Update mobile app", "Clear app cache", "Reinstall app"]
+            else:
+                return ["Contact technical support", "View system status", "Access user guide"]
+
+        # Keyword-based suggestions when category not yet determined
+        if any(word in message_text for word in ['transaction', 'charge', 'purchase', 'payment']):
+            return ["View my transactions", "Dispute a charge", "Download statement"]
+        elif any(word in message_text for word in ['activate', 'new card', 'replacement']):
+            return ["Activate my card", "Check card status", "Order replacement"]
+        elif any(word in message_text for word in ['limit', 'credit', 'increase']):
+            return ["Check my credit limit", "Request limit increase", "View available credit"]
+        elif any(word in message_text for word in ['rewards', 'points', 'redeem']):
+            return ["Check rewards balance", "Redeem rewards", "Learn about rewards program"]
+        elif any(word in message_text for word in ['report', 'expense', 'statement']):
+            return ["Generate expense report", "Download statement", "View spending summary"]
+        elif any(word in message_text for word in ['dispute', 'fraud', 'unauthorized']):
+            return ["Report fraudulent transaction", "File a dispute", "Block my card"]
+        elif any(word in message_text for word in ['fee', 'charge', 'interest']):
+            return ["View fee schedule", "Understand my charges", "Ask about interest rates"]
+        elif any(word in message_text for word in ['travel', 'international', 'foreign']):
+            return ["Set travel notification", "Check foreign transaction fees", "View travel benefits"]
+
+        return ["View account summary", "Check recent transactions", "Ask another question"]
     except Exception as e:
         logger.error(f"Error in generate_follow_up_options: {str(e)}")
         return []
 
-def should_generate_quote(context: Dict) -> bool:
-    """Determine if we have enough context to generate a quote."""
+def should_show_card_summary(context: Dict) -> bool:
+    """Determine if we have enough context to show a card account summary."""
     try:
-        # Add more conditions as needed based on your quote requirements
-        return bool(context.get('insurance_type')) and bool(context.get('user_details'))
+        # Show summary if user has requested account info or we have card details
+        return bool(context.get('show_summary')) or bool(context.get('card_number_last4'))
     except Exception as e:
-        logger.error(f"Error in should_generate_quote: {str(e)}")
+        logger.error(f"Error in should_show_card_summary: {str(e)}")
         return False
 
-def generate_quote(context: Dict) -> Dict:
-    """Generate an insurance quote based on the context."""
+def generate_card_summary(context: Dict) -> Dict:
+    """Generate a corporate card account summary based on the context."""
     try:
-        insurance_type = context.get('insurance_type', '')
-        
-        # Basic quote generation - this should be expanded with actual quote calculation
-        quote = {
-            "monthly_premium": 0,
-            "coverage_amount": 0,
-            "deductible": 0,
-            "coverage_type": insurance_type,
-            "terms": []
+        support_category = context.get('support_category', '')
+
+        # Basic card summary - this should be expanded with actual API calls to get real data
+        summary = {
+            "current_balance": 0,
+            "available_credit": 0,
+            "credit_limit": 0,
+            "rewards_points": 0,
+            "statement_date": "",
+            "payment_due_date": "",
+            "card_type": ""
         }
-        
-        if insurance_type == "auto":
-            quote['monthly_premium'] = 100  # Base rate
-            quote['coverage_amount'] = 100000
-            quote['deductible'] = 500
-        elif insurance_type == "home":
-            quote['monthly_premium'] = 150
-            quote['coverage_amount'] = 300000
-            quote['deductible'] = 1000
-        elif insurance_type == "life":
-            quote['monthly_premium'] = 50
-            quote['coverage_amount'] = 500000
-            quote['deductible'] = 0
-        
-        return quote
+
+        # Placeholder data based on support category
+        if support_category == "account":
+            summary['current_balance'] = 2500.00
+            summary['available_credit'] = 7500.00
+            summary['credit_limit'] = 10000.00
+            summary['card_type'] = "BMO Corporate Card"
+        elif support_category == "rewards":
+            summary['rewards_points'] = 15000
+            summary['card_type'] = "BMO Corporate Rewards Card"
+            summary['current_balance'] = 3200.00
+            summary['available_credit'] = 16800.00
+            summary['credit_limit'] = 20000.00
+        elif support_category == "transactions":
+            summary['current_balance'] = 1800.00
+            summary['available_credit'] = 13200.00
+            summary['credit_limit'] = 15000.00
+            summary['statement_date'] = "2024-01-31"
+            summary['payment_due_date'] = "2024-02-15"
+        else:
+            # Default summary
+            summary['current_balance'] = 2000.00
+            summary['available_credit'] = 8000.00
+            summary['credit_limit'] = 10000.00
+            summary['card_type'] = "BMO Corporate Card"
+
+        return summary
     except Exception as e:
-        logger.error(f"Error in generate_quote: {str(e)}")
+        logger.error(f"Error in generate_card_summary: {str(e)}")
         return {
-            "monthly_premium": 0,
-            "coverage_amount": 0,
-            "deductible": 0,
-            "coverage_type": "",
-            "terms": []
+            "current_balance": 0,
+            "available_credit": 0,
+            "credit_limit": 0,
+            "rewards_points": 0,
+            "statement_date": "",
+            "payment_due_date": "",
+            "card_type": ""
         }
